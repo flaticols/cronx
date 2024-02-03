@@ -1,3 +1,5 @@
-module github.com/robfig/cron/v3
+module github.com/flaticols/cronx
 
-go 1.12
+go 1.21
+
+require github.com/oklog/ulid/v2 v2.1.0

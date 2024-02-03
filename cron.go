@@ -1,4 +1,4 @@
-package cron
+package cronx
 
 import (
 	"context"
@@ -11,19 +11,19 @@ import (
 // specified by the schedule. It may be started, stopped, and the entries may
 // be inspected while running.
 type Cron struct {
-	entries   []*Entry
-	chain     Chain
-	stop      chan struct{}
-	add       chan *Entry
-	remove    chan EntryID
-	snapshot  chan chan []Entry
-	running   bool
-	logger    Logger
-	runningMu sync.Mutex
-	location  *time.Location
-	parser    ScheduleParser
-	nextID    EntryID
-	jobWaiter sync.WaitGroup
+	entries      []*Entry
+	chain        Chain
+	stop         chan struct{}
+	add          chan *Entry
+	remove       chan EntryID
+	snapshot     chan chan []Entry
+	running      bool
+	logger       Logger
+	runningMu    sync.Mutex
+	location     *time.Location
+	parser       ScheduleParser
+	entityIDProv EntityIDProvider
+	jobWaiter    sync.WaitGroup
 }
 
 // ScheduleParser is an interface for schedule spec parsers that return a Schedule
@@ -42,37 +42,6 @@ type Schedule interface {
 	// Next is invoked initially, and then each time the job is run.
 	Next(time.Time) time.Time
 }
-
-// EntryID identifies an entry within a Cron instance
-type EntryID int
-
-// Entry consists of a schedule and the func to execute on that schedule.
-type Entry struct {
-	// ID is the cron-assigned ID of this entry, which may be used to look up a
-	// snapshot or remove it.
-	ID EntryID
-
-	// Schedule on which this job should be run.
-	Schedule Schedule
-
-	// Next time the job will run, or the zero time if Cron has not been
-	// started or this entry's schedule is unsatisfiable
-	Next time.Time
-
-	// Prev is the last time this job was run, or the zero time if never.
-	Prev time.Time
-
-	// WrappedJob is the thing to run when the Schedule is activated.
-	WrappedJob Job
-
-	// Job is the thing that was submitted to cron.
-	// It is kept around so that user code that needs to get at the job later,
-	// e.g. via Entries() can do so.
-	Job Job
-}
-
-// Valid returns true if this is not the zero entry.
-func (e Entry) Valid() bool { return e.ID != 0 }
 
 // byTime is a wrapper for sorting the entry array by time
 // (with zero time at the end).
@@ -97,32 +66,33 @@ func (s byTime) Less(i, j int) bool {
 //
 // Available Settings
 //
-//   Time Zone
-//     Description: The time zone in which schedules are interpreted
-//     Default:     time.Local
+//	Time Zone
+//	  Description: The time zone in which schedules are interpreted
+//	  Default:     time.Local
 //
-//   Parser
-//     Description: Parser converts cron spec strings into cron.Schedules.
-//     Default:     Accepts this spec: https://en.wikipedia.org/wiki/Cron
+//	Parser
+//	  Description: Parser converts cron spec strings into cron.Schedules.
+//	  Default:     Accepts this spec: https://en.wikipedia.org/wiki/Cron
 //
-//   Chain
-//     Description: Wrap submitted jobs to customize behavior.
-//     Default:     A chain that recovers panics and logs them to stderr.
+//	Chain
+//	  Description: Wrap submitted jobs to customize behavior.
+//	  Default:     A chain that recovers panics and logs them to stderr.
 //
 // See "cron.With*" to modify the default behavior.
 func New(opts ...Option) *Cron {
 	c := &Cron{
-		entries:   nil,
-		chain:     NewChain(),
-		add:       make(chan *Entry),
-		stop:      make(chan struct{}),
-		snapshot:  make(chan chan []Entry),
-		remove:    make(chan EntryID),
-		running:   false,
-		runningMu: sync.Mutex{},
-		logger:    DefaultLogger,
-		location:  time.Local,
-		parser:    standardParser,
+		entries:      nil,
+		chain:        NewChain(),
+		add:          make(chan *Entry),
+		stop:         make(chan struct{}),
+		snapshot:     make(chan chan []Entry),
+		remove:       make(chan EntryID),
+		running:      false,
+		runningMu:    sync.Mutex{},
+		logger:       DefaultLogger,
+		location:     time.Local,
+		entityIDProv: ULIDProvider,
+		parser:       standardParser,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -148,7 +118,7 @@ func (c *Cron) AddFunc(spec string, cmd func()) (EntryID, error) {
 func (c *Cron) AddJob(spec string, cmd Job) (EntryID, error) {
 	schedule, err := c.parser.Parse(spec)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return c.Schedule(schedule, cmd), nil
 }
@@ -158,9 +128,9 @@ func (c *Cron) AddJob(spec string, cmd Job) (EntryID, error) {
 func (c *Cron) Schedule(schedule Schedule, cmd Job) EntryID {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
-	c.nextID++
+
 	entry := &Entry{
-		ID:         c.nextID,
+		ID:         c.entityIDProv(),
 		Schedule:   schedule,
 		WrappedJob: c.chain.Then(cmd),
 		Job:        cmd,

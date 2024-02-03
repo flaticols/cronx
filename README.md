@@ -1,17 +1,16 @@
-[![GoDoc](http://godoc.org/github.com/robfig/cron?status.png)](http://godoc.org/github.com/robfig/cron)
-[![Build Status](https://travis-ci.org/robfig/cron.svg?branch=master)](https://travis-ci.org/robfig/cron)
+# cronx
 
-# cron
+**Original version** [https://github.com/robfig/cron](https://github.com/robfig/cron)
 
 Cron V3 has been released!
 
 To download the specific tagged release, run:
 ```bash
-go get github.com/robfig/cron/v3@v3.0.0
+go get github.com/flaticols/cron@latest
 ```
 Import it in your program as:
 ```go
-import "github.com/robfig/cron/v3"
+import "github.com/flaticols/cronx"
 ```
 It requires Go 1.11 or later due to usage of Go Modules.
 

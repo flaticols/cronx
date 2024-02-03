@@ -1,4 +1,4 @@
-package cron
+package cronx
 
 import (
 	"time"
@@ -26,6 +26,29 @@ func WithSeconds() Option {
 func WithParser(p ScheduleParser) Option {
 	return func(c *Cron) {
 		c.parser = p
+	}
+}
+
+// WithEntityIDProvider sets the entity ID provider for the cron instance.
+// The entity ID provider is a function that returns a unique identifier for a job entry.
+// The entity ID is used to look up a snapshot or remove a job entry.
+//
+// Example usage:
+//
+//	idProvider := func() EntryID {
+//	    // generate and return a unique entry ID
+//	}
+//	option := WithEntityIDProvider(idProvider)
+//	cron := NewCron(option)
+//
+// Parameters:
+//   - p: The entity ID provider function.
+//
+// Returns:
+//   - An Option function that sets the entity ID provider.
+func WithEntityIDProvider(p EntityIDProvider) Option {
+	return func(c *Cron) {
+		c.entityIDProv = p
 	}
 }
 
