@@ -2,6 +2,7 @@ package cronx
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
@@ -18,7 +19,7 @@ type Cron struct {
 	remove       chan EntryID
 	snapshot     chan chan []Entry
 	running      bool
-	logger       Logger
+	logger       *slog.Logger
 	runningMu    sync.Mutex
 	location     *time.Location
 	parser       ScheduleParser
@@ -89,7 +90,7 @@ func New(opts ...Option) *Cron {
 		remove:       make(chan EntryID),
 		running:      false,
 		runningMu:    sync.Mutex{},
-		logger:       DefaultLogger,
+		logger:       slog.Default(),
 		location:     time.Local,
 		entityIDProv: ULIDProvider,
 		parser:       standardParser,

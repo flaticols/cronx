@@ -1,6 +1,7 @@
 package cronx
 
 import (
+	"log/slog"
 	"time"
 )
 
@@ -61,7 +62,7 @@ func WithChain(wrappers ...JobWrapper) Option {
 }
 
 // WithLogger uses the provided logger.
-func WithLogger(logger Logger) Option {
+func WithLogger(logger *slog.Logger) Option {
 	return func(c *Cron) {
 		c.logger = logger
 	}
