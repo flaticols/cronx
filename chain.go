@@ -2,6 +2,7 @@ package cronx
 
 import (
 	"fmt"
+	"log/slog"
 	"runtime"
 	"sync"
 	"time"
@@ -38,7 +39,7 @@ func (c Chain) Then(j Job) Job {
 }
 
 // Recover panics in wrapped jobs and log them with the provided logger.
-func Recover(logger Logger) JobWrapper {
+func Recover(logger *slog.Logger) JobWrapper {
 	return func(j Job) Job {
 		return FuncJob(func() {
 			defer func() {
@@ -50,7 +51,7 @@ func Recover(logger Logger) JobWrapper {
 					if !ok {
 						err = fmt.Errorf("%v", r)
 					}
-					logger.Error(err, "panic", "stack", "...\n"+string(buf))
+					logger.Error("panic. recover", slog.String("error", err.Error()), "stack", "...\n"+string(buf))
 				}
 			}()
 			j.Run()
@@ -61,7 +62,7 @@ func Recover(logger Logger) JobWrapper {
 // DelayIfStillRunning serializes jobs, delaying subsequent runs until the
 // previous one is complete. Jobs running after a delay of more than a minute
 // have the delay logged at Info.
-func DelayIfStillRunning(logger Logger) JobWrapper {
+func DelayIfStillRunning(logger *slog.Logger) JobWrapper {
 	return func(j Job) Job {
 		var mu sync.Mutex
 		return FuncJob(func() {
@@ -78,7 +79,7 @@ func DelayIfStillRunning(logger Logger) JobWrapper {
 
 // SkipIfStillRunning skips an invocation of the Job if a previous invocation is
 // still running. It logs skips to the given logger at Info level.
-func SkipIfStillRunning(logger Logger) JobWrapper {
+func SkipIfStillRunning(logger *slog.Logger) JobWrapper {
 	return func(j Job) Job {
 		var ch = make(chan struct{}, 1)
 		ch <- struct{}{}

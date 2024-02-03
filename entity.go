@@ -1,14 +1,20 @@
 package cronx
 
 import (
-	"github.com/oklog/ulid/v2"
+	"log/slog"
+	"math/rand"
+	"strconv"
 	"time"
 )
 
+var seededRand *rand.Rand = rand.New(
+	rand.NewSource(time.Now().UnixNano()))
+
 type EntityIDProvider func() EntryID
 
-func ULIDProvider() EntryID {
-	return EntryID(ulid.Make().String())
+func DefaultIDProvider() EntryID {
+	slog.Warn("Using DefaultIDProvider")
+	return EntryID(strconv.Itoa(seededRand.Int()))
 }
 
 // EntryID identifies an entry within a Cron instance

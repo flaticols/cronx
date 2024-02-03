@@ -92,7 +92,7 @@ func New(opts ...Option) *Cron {
 		runningMu:    sync.Mutex{},
 		logger:       slog.Default(),
 		location:     time.Local,
-		entityIDProv: ULIDProvider,
+		entityIDProv: DefaultIDProvider,
 		parser:       standardParser,
 	}
 	for _, opt := range opts {
